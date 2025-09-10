@@ -3,22 +3,7 @@ import nodemailer from "nodemailer";
 // Create a test account or replace with real credentials.
 
 // Wrap in an async IIFE so we can use await.
-export const sendOtpMail = async ({
-	to,
-	token,
-	otp,
-}: {
-	to: string;
-	token: string;
-	otp?: string;
-}) => {
-	console.log("Sending token to:", to);
-	console.log(
-		"process.env.EMAIL:",
-		process.env.EMAIL,
-		" ",
-		process.env.EMAIL_PASS
-	);
+export const sendOtpMail = async ({ to, otp }: { to: string; otp: string }) => {
 	const transporter = nodemailer.createTransport({
 		host: "smtp.gmail.com",
 		auth: {

@@ -16,11 +16,80 @@ datasource db {
 
 
 model User {
-  id    String  @id @default(cuid())
-  email String  @unique
-  password  String
-  name  String?
-
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id                  String  @id @default(cuid())
+  email               String  @unique
+  password            String
+  name                String?
+  emailVerified       Boolean
+  Credentials         Credentials[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
+
+model VerifyEmail {
+  id                  String @id  @default(cuid())
+  email               String  @unique
+  otp                 String
+  expireAt            DateTime
+  attempts            Int
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Credentials {
+  id                  String @id @default(cuid())
+  name                String
+  apiKey              String
+  userId              String
+  User                User    @relation(fields: [userId],references: [id])
+  CredentialsId       String
+  CredentialsObjects  CredentialsObjects  @relation(fields: [CredentialsId], references: [id])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model CredentialsObjects {
+  id                  String @id @default(cuid())
+  name                String
+  value               String
+  Credentials         Credentials[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+
+model AvaliableIntegrations {
+  id                  String @id @default(cuid())
+  name                String
+  icon                String
+  node                Node[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+
+enum triggerType {
+  MANUAL
+  WEBHOOK
+  RUNNER
+}
+
+model Workflow {
+  id                  String @id @default(cuid())
+  name                String
+  icon                String
+  triggerType         triggerType  @default(MANUAL)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Node {
+  id                  String @id @default(cuid())
+  name                String
+  integrationId       String
+  integration         AvaliableIntegrations     @relation(fields: [integrationId],references: [id])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+
