@@ -1,18 +1,25 @@
-import { prisma } from "@repo/db/client";
+import prisma from "@repo/db/client";
 import { Request, Response } from "express";
 
 export const createTGAPIKEY = async (req: Request, res: Response) => {
 	try {
-		const { apiKey, userId } = req.body;
+		const { apiKey, userId, credentialsId } = req.body;
 		if (!apiKey) {
 			return res.status(400).json({ message: "API key is required" });
 		}
+		const existing = await prisma.credentialsObjects.findFirst({
+			where: { id: credentialsId, name: "RESEND" },
+		});
+		if (!existing) {
+			return res.status(404).json({ message: "Credentials object not found" });
+		}
 
-		const TelegramAPIKey = await prisma.availableIntegrations.create({
+		const TelegramAPIKey = await prisma.credentials.create({
 			data: {
 				name: "telegram",
 				apiKey: apiKey,
 				userId,
+				CredentialsId: existing.id,
 			},
 			select: { id: true, name: true },
 		});
@@ -27,7 +34,7 @@ export const createTGAPIKEY = async (req: Request, res: Response) => {
 export const getTGAPIKEY = async (req: Request, res: Response) => {
 	try {
 		const { id, userId } = req.body;
-		const tgApiKey = await prisma.Credentials.findFirst({
+		const tgApiKey = await prisma.credentials.findFirst({
 			where: { id, userId },
 			select: { apiKey: true },
 		});
@@ -47,10 +54,10 @@ export const updateTGAPIKEY = async (req: Request, res: Response) => {
 		if (!apiKey) {
 			return res.status(400).json({ message: "API key is required" });
 		}
-		const existing = await prisma.Credentials.findFirst({
+		const existing = await prisma.credentials.findFirst({
 			where: { id, userId },
 		});
-		const updated = await prisma.Credentials.updateMany({
+		const updated = await prisma.credentials.updateMany({
 			where: { id: existing?.id },
 			data: { apiKey: apiKey },
 		});
@@ -72,10 +79,10 @@ export const deleteTGAPIKEY = async (req: Request, res: Response) => {
 		if (!id) {
 			return res.status(400).json({ message: "ID is required" });
 		}
-		const existing = await prisma.Credentials.findUnique({
+		const existing = await prisma.credentials.findUnique({
 			where: { id: id, userId },
 		});
-		const deleted = await prisma.Credentials.deleteMany({
+		const deleted = await prisma.credentials.deleteMany({
 			where: { id: existing?.id },
 		});
 

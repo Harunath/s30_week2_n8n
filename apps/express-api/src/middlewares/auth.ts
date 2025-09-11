@@ -1,4 +1,4 @@
-import { prisma } from "@repo/db/client";
+import prisma from "@repo/db/client";
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 

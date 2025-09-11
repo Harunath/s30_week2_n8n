@@ -23,6 +23,7 @@
     "packages/*"
   ],
   "dependencies": {
-    "bcrypt": "^6.0.0"
+    "bcrypt": "^6.0.0",
+    "motion": "^12.23.12"
   }
 }

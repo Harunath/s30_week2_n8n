@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -22,6 +21,7 @@ model User {
   name                String?
   emailVerified       Boolean
   Credentials         Credentials[]
+  Workflows           Workflow[]
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 }
@@ -44,6 +44,9 @@ model Credentials {
   User                User    @relation(fields: [userId],references: [id])
   CredentialsId       String
   CredentialsObjects  CredentialsObjects  @relation(fields: [CredentialsId], references: [id])
+
+  Nodes                Node[]
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
@@ -57,39 +60,105 @@ model CredentialsObjects {
   updatedAt           DateTime @updatedAt
 }
 
+enum NodeType {
+  TRIGGER_MANUAL
+  TRIGGER_WEBHOOK
+  ACTION
+  // LOGIC      // IF/ELSE, SWITCH, MERGE, etc.
+  // UTILITY    // SET, MAP, CODE, DELAY, etc.
+}
 
 model AvaliableIntegrations {
   id                  String @id @default(cuid())
   name                String
   icon                String
   node                Node[]
+  type                NodeType
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  @@index([name])
 }
 
 
-enum triggerType {
-  MANUAL
-  WEBHOOK
-  RUNNER
-}
 
 model Workflow {
-  id                  String @id @default(cuid())
-  name                String
-  icon                String
-  triggerType         triggerType  @default(MANUAL)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id           String    @id @default(cuid())
+  name         String
+  description  String? 
+
+  canvasZoom   Float?
+  canvasX      Float?
+  canvasY      Float?
+
+  nodes        Node[]
+  connections  Connection[]
+
+
+  userId      String
+  User        User      @relation(fields: [userId],references: [id])
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([name])
 }
 
 model Node {
-  id                  String @id @default(cuid())
-  name                String
-  integrationId       String
-  integration         AvaliableIntegrations     @relation(fields: [integrationId],references: [id])
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id          String    @id @default(cuid())
+  workflowId  String
+  workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  name        String
+
+  credentialsId   String
+  credentials      Credentials    @relation(fields: [credentialsId],references: [id])
+
+  AvaliableIntegrationsId  String
+  AvaliableIntegrations    AvaliableIntegrations   @relation(fields: [AvaliableIntegrationsId],references: [id])
+
+  x           Float
+  y           Float
+
+  idx         Int?
+  @@unique([workflowId, idx])
+
+  // Opposite relation fields for Connection model
+  fromConnections Connection[] @relation("FromNode")
+  toConnections   Connection[] @relation("ToNode")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workflowId])
 }
 
+model Connection {
+  id            String   @id @default(cuid())
 
+  workflowId  String
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  fromNodeId  String
+  fromNode    Node     @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
+
+  toNodeId    String
+  toNode      Node     @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  // optional: which output port/index of the from node, and input port/index of the to node
+  fromPort      String?  // e.g., "main"
+  fromIndex     Int?     // e.g., output 0, 1, ...
+  toPort        String?  // e.g., "main"
+  toIndex       Int?
+
+  // optional: condition (for IF/branch)
+  condition     Json?    // e.g., { "expr": "...", "on": "item.value" }
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Uniqueness: one edge per (workflow, fromNode, fromPort, fromIndex, toNode, toPort, toIndex)
+  @@unique([workflowId, fromNodeId, fromPort, fromIndex, toNodeId, toPort, toIndex])
+  @@index([workflowId, fromNodeId])
+  @@index([workflowId, toNodeId])
+}

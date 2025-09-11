@@ -1,9 +1,10 @@
-import { prisma } from "@repo/db/client";
+import { NodeType } from "@repo/db/client";
+import prisma from "@repo/db/client";
 import { Request, Response } from "express";
 
 export const getAvailableIntegrations = async (req: Request, res: Response) => {
 	try {
-		const integrations = await prisma.AvaliableIntegrations.findMany();
+		const integrations = await prisma.avaliableIntegrations.findMany();
 		res.status(200).json({ data: integrations });
 	} catch {
 		res.status(500).json({ message: "Internal server error" });
@@ -19,7 +20,7 @@ export const getAvailableIntegrationById = async (
 		if (!id) {
 			return res.status(400).json({ message: "ID is required" });
 		}
-		const integration = await prisma.AvaliableIntegrations.findUnique({
+		const integration = await prisma.avaliableIntegrations.findUnique({
 			where: { id },
 		});
 		if (!integration) {
@@ -36,14 +37,14 @@ export const createAvailableIntegration = async (
 	res: Response
 ) => {
 	try {
-		const { name, description } = req.body;
-		if (!name || !description) {
+		const { name, icon, nodeType } = req.body;
+		if (!name || !icon || !nodeType || (nodeType as NodeType) === undefined) {
 			return res
 				.status(400)
 				.json({ message: "Name and description are required" });
 		}
-		const newIntegration = await prisma.AvaliableIntegrations.create({
-			data: { name, description },
+		const newIntegration = await prisma.avaliableIntegrations.create({
+			data: { name, icon, type: nodeType },
 		});
 		res.status(201).json({ data: newIntegration });
 	} catch {
@@ -57,19 +58,29 @@ export const updateAvailableIntegration = async (
 ) => {
 	try {
 		const { id } = req.params;
-		const { name, description } = req.body;
+		const { name, icon, nodeType } = req.body;
 		if (!id) {
 			return res.status(400).json({ message: "ID is required" });
 		}
-		const integration = await prisma.AvaliableIntegrations.findUnique({
+		const queryData: { name?: string; icon?: string; type?: NodeType } = {};
+		if (name) queryData.name = name;
+		if (icon) queryData.icon = icon;
+		if (nodeType && (nodeType as NodeType) !== undefined)
+			queryData.type = nodeType;
+		if (Object.keys(queryData).length === 0) {
+			return res.status(400).json({
+				message: "At least one field (name, icon, nodeType) is required",
+			});
+		}
+		const integration = await prisma.avaliableIntegrations.findUnique({
 			where: { id },
 		});
 		if (!integration) {
 			return res.status(404).json({ message: "Integration not found" });
 		}
-		const updatedIntegration = await prisma.AvaliableIntegrations.update({
+		const updatedIntegration = await prisma.avaliableIntegrations.update({
 			where: { id },
-			data: { name, description },
+			data: queryData,
 		});
 		res.status(200).json({ data: updatedIntegration });
 	} catch {
@@ -86,13 +97,13 @@ export const deleteAvailableIntegration = async (
 		if (!id) {
 			return res.status(400).json({ message: "ID is required" });
 		}
-		const integration = await prisma.AvaliableIntegrations.findUnique({
+		const integration = await prisma.avaliableIntegrations.findUnique({
 			where: { id },
 		});
 		if (!integration) {
 			return res.status(404).json({ message: "Integration not found" });
 		}
-		await prisma.AvaliableIntegrations.delete({
+		await prisma.avaliableIntegrations.delete({
 			where: { id },
 		});
 		res.status(200).json({ message: "Integration deleted successfully" });

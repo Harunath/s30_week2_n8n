@@ -3,17 +3,8 @@ import generateJWT from "../lib/jwtGenerator.js";
 import verifyToken from "../lib/verify.js";
 import { generateOTP } from "../lib/OTPGenerator.js";
 import { sendOtpMail } from "../lib/mail/otpMail.js";
-import { prisma } from "@repo/db/client";
+import prisma from "@repo/db/client";
 import bcrypt from "bcrypt";
-interface UserType {
-	email: string;
-	password: string;
-	jwt?: string;
-	otp?: string;
-	verified?: boolean;
-}
-
-const users: UserType[] = [];
 
 export const signup = async (req: Request, res: Response) => {
 	const { email, password } = req.body;
@@ -33,14 +24,15 @@ export const signup = async (req: Request, res: Response) => {
 		data: {
 			email,
 			otp,
-			expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 15 minutes from now
+			expireAt: new Date(Date.now() + 10 * 60 * 1000), // 15 minutes from now
+			attempts: 0,
 		},
 	});
 	const user = await prisma.user.create({
 		data: {
 			email,
 			password: hash,
-			verified: false,
+			emailVerified: false, // or new Date() if it expects a Date
 		},
 	});
 	const token = generateJWT({ email });
@@ -103,14 +95,14 @@ export const post = async (req: Request, res: Response) => {
 			return res.status(401).json({ message: "user not found " });
 		}
 		const verifyEmail = await prisma.verifyEmail.findFirst({
-			where: { email, expiresAt: { gt: new Date() } },
+			where: { email, expireAt: { gt: new Date() } },
 		});
-		if (verifyEmail.otp !== otp) {
+		if (!verifyEmail || verifyEmail.otp !== otp) {
 			return res.status(401).json({ message: "Invalid OTP" });
 		}
 		await prisma.user.update({
 			where: { email },
-			data: { verified: true },
+			data: { emailVerified: true },
 		});
 
 		res.cookie("token", token, { httpOnly: true });
